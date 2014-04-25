@@ -9,13 +9,22 @@ namespace com\crowdemotion\API\client;
  */
 class CEClient {
     
-    private $base_url = 'https://api.crowdemotion.co.uk/';
+    private $domain = 'api.crowdemotion.co.uk';
+    private $base_url;
     
     private $debug;
     private $user = null;
 
     public function __construct($debug=false) {
         $this->debug = $debug;
+        
+        $protocol = 'http';
+        $connection = @fsockopen($host, 443);
+        if (is_resource($connection)) {
+            $protocol = 'https';
+            fclose($connection);
+        }
+        $this->base_url = $protocol .'://'. $this->domain .'/';        
     }
     
     public function login($username, $password) {
@@ -118,7 +127,7 @@ class CEClient {
         $response = curl_exec($ch);
         
         if($this->debug) {
-            var_dump($function, $response);
+            var_dump($url, $function, $response);
         }
 
         if(curl_getinfo($ch, CURLINFO_HTTP_CODE) != 200) {
