@@ -4,7 +4,7 @@ require_once './CEClient.php';
 
 date_default_timezone_set('Etc/UTC');
 
-$api = new \com\crowdemotion\API\client\CEClient(true);
+$api = new \com\crowdemotion\API\client\CEClient(true, true);
 
 $username = "user";
 $password = "password";
@@ -33,6 +33,8 @@ if($facevideo->status != 1) {
 // *** POST VIDEO RESULTS
 $res = $api->writeTimeseries(array('responseId' => $facevideo->responseId, 'metric' => '2',
         'data' => array(0.43333, 0.877223, 0.222244, 0.1)));
+$res = $res && $api->writeTimeseries(array('responseId' => $facevideo->responseId, 'metric' => '3',
+        'data' => array(0.1, 0.2, 0.3, 0.4)));
     
 if(!$res) {
     echo 'writeTimeseries error';
@@ -41,8 +43,10 @@ if(!$res) {
 
 
 // *** GET VIDEO RESULTS
-$timeseries = $api->readTimeseries(array('responseId' => $facevideo->responseId, 'metric' => '2'));
+$timeseries_res = $api->readTimeseries(array('responseId' => $facevideo->responseId, 'metric' => array(2,3)));
 
-if($timeseries) {
-    var_dump(count($timeseries->data) == (($timeseries->endIndex-$timeseries->startIndex+1)/$timeseries->stepSize));
+foreach ($timeseries_res as $timeseries) {
+    if($timeseries) {
+        var_dump(count($timeseries->data) == (($timeseries->endIndex-$timeseries->startIndex+1)/$timeseries->stepSize));
+    }
 }
