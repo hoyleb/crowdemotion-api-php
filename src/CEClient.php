@@ -87,22 +87,41 @@ class CEClient {
         return $response;
     }
     
-    public function upload($file_full_path) {
+    public function upload($dir,$name,$type, $dim) {
 
         $function = "facevideo/upload";
         $url = "$function";
-        
+
         //$postFields = array('file' => '@'. $file_full_path);
-        $postFields = array('file' => curl_file_create($file_full_path, 'application/octet-stream', basename($file_full_path)));
-        $response = $this->makeCall($function, 'POST', $url, $postFields);
-                
+
+        //$file =curl_file_create($file_full_path, 'application/octet-stream', basename($file_full_path));
+        //$postFields = array('file_contents' => $file);
+        $postFields = array(
+            'file' =>
+                '@'            . $dir
+                . ';filename=' . $name
+                . ';type='     . $type
+            );
+
+        $response = $this->makeCall($function, 'POST', $url, $postFields,
+            array('header'=>
+                array(
+                    'Accept-Ranges: bytes',
+                    "Content-Length: $dim",
+                    "Content-Range: bytes 0-$dim",
+                    'Content-Type: application/octet-stream',
+                    'Content-Description: File Transfer',
+                    'Content-Disposition: form-data; name="file"; filename="'.$name.'"'
+                    ))
+            );
+
         if($response) {
             $response = json_decode($response);
         }
-        
+
         return $response;
     }
-    
+
     public function writeTimeseries($params) {
 
         $function = "timeseries";
@@ -136,7 +155,7 @@ class CEClient {
         return $response;
     }
      
-    private function makeCall($function, $httpMethod, $url, $postFields=null) {
+    private function makeCall($function, $httpMethod, $url, $postFields=null, $opt=array()) {
 
         // TODO better error management
         if(!$this->user || !$this->user->token || !$this->user->userId) {
@@ -161,22 +180,57 @@ class CEClient {
         $headers = array(
             "Authorization: $authorization",
             "x-ce-rest-date: $time",
-            "nonce: $nonce");
-        if ($httpMethod != 'GET') {
+            "nonce: $nonce",
+        );
+        if ($httpMethod != 'GET' && !isset($opt['header'])) {
             $headers[] = "Content-Type: application/json";
         }
+        if (isset($opt['header'])) {
+            foreach($opt['header'] as $h){
+                $headers[] = $h;
+            }
+        }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        
+
+        if($this->debug) {
+            curl_setopt($ch, CURLOPT_HEADER, true);
+            curl_setopt($ch, CURLOPT_VERBOSE, true);
+            $logfh = fopen("my_log.log", 'w+');
+            curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+            error_log('postfield');
+            error_log(var_export($postFields,true));
+
+        }
         $response = curl_exec($ch);
         
         if($this->debug) {
+            //curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+
+            $headers = curl_getinfo($ch, CURLINFO_HEADER_OUT);
+            error_log(var_dump( $headers ,true));
+
+            curl_setopt($ch, CURLOPT_FILE, $logfh); // logs curl messages
             var_dump($url, $function, $response);
+            $curlVersion = curl_version();
+            extract(curl_getinfo($ch));
+            //$metrics = <<<EOD
+
+            error_log("URL....: $url                                                                                                               ");
+            error_log("Code...: $http_code ($redirect_count redirect(s) in $redirect_time secs)                                                    ");
+            error_log("Content: $content_type Size: $download_content_length (Own: $size_download) Filetime: $filetime                             ");
+            error_log("Time...: $total_time Start @ $starttransfer_time (DNS: $namelookup_time Connect: $connect_time Request: $pretransfer_time)  ");
+            error_log("Speed..: Down: $speed_download (avg.) Up: $speed_upload (avg.)                                                              ");
+            error_log("Curl...: v{$curlVersion['version']}                                                                                         ");
+
+            //EOD;
+
+
         }
 
         if(curl_getinfo($ch, CURLINFO_HTTP_CODE) != 200) {
             $response = false;
         }
-        
+
         curl_close($ch);
         
         return $response === '' ? true : $response;
