@@ -192,7 +192,7 @@ class CEClient {
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-        if($this->debug) {
+        if(false &&$this->debug) {
             curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_VERBOSE, true);
             $logfh = fopen("my_log.log", 'w+');
@@ -203,7 +203,7 @@ class CEClient {
         }
         $response = curl_exec($ch);
         
-        if($this->debug) {
+        if(false && $this->debug) {
             //curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 
             $headers = curl_getinfo($ch, CURLINFO_HEADER_OUT);
@@ -231,6 +231,10 @@ class CEClient {
             $response = false;
         }
 
+        if($this->debug) {
+            error_log('curl_getinfo($ch, CURLINFO_HTTP_CODE)');
+            error_log(var_export(curl_getinfo($ch, CURLINFO_HTTP_CODE),true));
+        }
         curl_close($ch);
         
         return $response === '' ? true : $response;
