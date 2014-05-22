@@ -154,9 +154,30 @@ class CEClient {
                 
         return $response;
     }
-     
-    private function makeCall($function, $httpMethod, $url, $postFields=null, $opt=array()) {
 
+    public function readMetrics($params=null) {
+
+        $function = "metric";
+        if($params==null){
+            $url = "$function";
+        }elseif(is_array($params)){
+            $q_url = implode('&metric_id=', $params);
+            $url = "$function?".substr($q_url,1);
+        }elseif(is_numeric($params)){
+            $url = "$function?metric_id=$params";
+        }
+
+        $response = $this->makeCall($function, 'GET', $url);
+
+        if($response) {
+            $response = json_decode($response);
+        }
+
+        return $response;
+    }
+
+    private function makeCall($function, $httpMethod, $url, $postFields=null, $opt=array()) {
+        $debug_l2 = false;
         // TODO better error management
         if(!$this->user || !$this->user->token || !$this->user->userId) {
             return false;
@@ -171,6 +192,7 @@ class CEClient {
         curl_setopt($ch, CURLOPT_URL, $this->base_url . $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
         curl_setopt($ch, CURLOPT_HEADER, FALSE);
+        $isPost = FALSE;
         if($httpMethod == 'POST') {
             $isPost = TRUE;
             curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
@@ -192,7 +214,7 @@ class CEClient {
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-        if(false &&$this->debug) {
+        if($debug_l2 && $this->debug) {
             curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_VERBOSE, true);
             $logfh = fopen("my_log.log", 'w+');
@@ -203,7 +225,7 @@ class CEClient {
         }
         $response = curl_exec($ch);
         
-        if(false && $this->debug) {
+        if($debug_l2 && $this->debug) {
             //curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 
             $headers = curl_getinfo($ch, CURLINFO_HEADER_OUT);
@@ -223,8 +245,9 @@ class CEClient {
             error_log("Curl...: v{$curlVersion['version']}                                                                                         ");
 
             //EOD;
-
-
+            error_log('=======RESPONSE');
+            error_log(var_export($response,true));
+            error_log('=======END RESPONSE');
         }
 
         if(curl_getinfo($ch, CURLINFO_HTTP_CODE) != 200) {
