@@ -14,8 +14,8 @@ if($_POST && $_FILES['file1']){
 
     $api = new \com\crowdemotion\API\client\CEClient(true, true);
 
-    $username = "stefano@crowdemotion.co.uk";
-    $password = "w1234567";
+    $username = "user";
+    $password = "password";
     $res = $api->login($username, $password);
 
     if(!$res) {
