@@ -20,6 +20,9 @@ if (!function_exists('curl_file_create')) {
 class CEClient {
     
     private $domain = 'api.crowdemotion.co.uk';
+    private $port = '80';
+    private $append_url = '';
+
     private $base_url;
     
     private $debug;
@@ -39,7 +42,7 @@ class CEClient {
                 $protocol = 'http';
             }
         }
-        $this->base_url = $protocol .'://'. $this->domain .'/';        
+        $this->base_url = $protocol .'://'. $this->domain .':' . $this->port . $this->append_url .'/';        
     }
     
     public function login($username, $password) {
@@ -87,41 +90,6 @@ class CEClient {
         return $response;
     }
     
-    public function upload($dir,$name,$type, $dim) {
-
-        $function = "facevideo/upload";
-        $url = "$function";
-
-        //$postFields = array('file' => '@'. $file_full_path);
-
-        //$file =curl_file_create($file_full_path, 'application/octet-stream', basename($file_full_path));
-        //$postFields = array('file_contents' => $file);
-        $postFields = array(
-            'file' =>
-                '@'            . $dir
-                . ';filename=' . $name
-                . ';type='     . $type
-            );
-
-        $response = $this->makeCall($function, 'POST', $url, $postFields,
-            array('header'=>
-                array(
-                    'Accept-Ranges: bytes',
-                    "Content-Length: $dim",
-                    "Content-Range: bytes 0-$dim",
-                    'Content-Type: application/octet-stream',
-                    'Content-Description: File Transfer',
-                    'Content-Disposition: form-data; name="file"; filename="'.$name.'"'
-                    ))
-            );
-
-        if($response) {
-            $response = json_decode($response);
-        }
-
-        return $response;
-    }
-
     public function writeTimeseries($params) {
 
         $function = "timeseries";
@@ -154,7 +122,60 @@ class CEClient {
                 
         return $response;
     }
-     
+ 
+    private function generate_boundary(){
+        return "--Boundary-". substr(md5(rand(0,32000)),0,10);
+    }
+    
+    private function multipart_build_query($fields, $boundary){
+
+        /*        
+        --Boundary_1_206808442_1400796574215
+        Content-Type: application/octet-stream
+        Content-Disposition: form-data; filename="video.mp4"; modification-date="Fri, 27 Jan 2012 13:32:38 GMT"; size=195261; name="file"
+        
+        <...>
+        --Boundary_1_206808442_1400796574215--
+        */
+        
+        $retval = '';
+        foreach($fields as $field => $attrs){
+            $retval .= "--$boundary\r\nContent-Type: application/octet-stream\r\n";
+            $retval .= "Content-Disposition: form-data; filename=\"{$attrs['filename']}\"; name=\"$field\"\r\n\r\n{$attrs['data']}\r\n";
+        }
+        $retval .= "--$boundary--";
+        return $retval;
+    }
+
+    public function upload($media_full_path) {
+        
+        $function = "facevideo/upload";
+        $url = "$function";
+        $httpMethod = 'POST';
+        
+        $fileHandle = fopen($media_full_path, "rb");
+        $data = stream_get_contents($fileHandle);
+        fclose($fileHandle);
+        
+        $filename = basename($media_full_path);
+        $boundary = $this->generate_boundary();
+        $postFields = $this->multipart_build_query(array('file' => array('filename' => $filename, 'data' => $data)), $boundary);
+
+        $headers = array('headers'=>
+            array(
+                "Content-Type: multipart/form-data; boundary=$boundary",
+            )
+        );
+        
+        $response = $this->makeCall($function, 'POST', $url, $postFields, $headers);
+
+        if($response) {
+            $response = json_decode($response);
+        }
+
+        return $response;
+    }
+    
     private function makeCall($function, $httpMethod, $url, $postFields=null, $opt=array()) {
 
         // TODO better error management
@@ -182,29 +203,31 @@ class CEClient {
             "x-ce-rest-date: $time",
             "nonce: $nonce",
         );
-        if ($httpMethod != 'GET' && !isset($opt['header'])) {
+        if ($httpMethod != 'GET' && !isset($opt['headers'])) {
             $headers[] = "Content-Type: application/json";
         }
-        if (isset($opt['header'])) {
-            foreach($opt['header'] as $h){
+        if (isset($opt['headers'])) {
+            foreach($opt['headers'] as $h){
                 $headers[] = $h;
             }
         }
+
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
         if($this->debug) {
-            curl_setopt($ch, CURLOPT_HEADER, true);
+            //curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_VERBOSE, true);
             $logfh = fopen("my_log.log", 'w+');
             curl_setopt($ch, CURLINFO_HEADER_OUT, true);
             error_log('postfield');
             error_log(var_export($postFields,true));
-
         }
+                
+        //curl_setopt($ch, CURLOPT_PROXY, '127.0.0.1:8888');
+        
         $response = curl_exec($ch);
         
         if($this->debug) {
-            //curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 
             $headers = curl_getinfo($ch, CURLINFO_HEADER_OUT);
             error_log(var_dump( $headers ,true));
@@ -223,8 +246,6 @@ class CEClient {
             error_log("Curl...: v{$curlVersion['version']}                                                                                         ");
 
             //EOD;
-
-
         }
 
         if(curl_getinfo($ch, CURLINFO_HTTP_CODE) != 200) {
