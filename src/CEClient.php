@@ -169,7 +169,7 @@ class CEClient {
         return $retval;
     }
 
-    public function upload($media_full_path) {
+    public function upload_form($media_full_path) {
         
         $function = "facevideo/upload";
         $url = "$function";
@@ -197,7 +197,7 @@ class CEClient {
         return $response;
     }
     
-    public function put($media_full_path) {
+    public function upload($media_full_path) {
 
         $filename = rawurlencode(basename($media_full_path));
         
