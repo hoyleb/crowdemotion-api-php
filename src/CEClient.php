@@ -197,7 +197,20 @@ class CEClient {
         return $response;
     }
     
-    private function makeCall($function, $httpMethod, $url, $postFields=null, $opt=array()) {
+    public function put($media_full_path) {
+
+        $filename = rawurlencode(basename($media_full_path));
+        
+        $function = "facevideo/upload";
+        $url = "$function/$filename";   // ?filename=
+        $function = $url;
+        
+        $response = $this->makeCall($function, 'PUT', $url, $media_full_path);
+                
+        return $response ? true : false;
+    }
+    
+    private function makeCall($function, $httpMethod, $url, $payload=null, $opt=array()) {
         $debug_l2 = false;
         // TODO better error management
         if(!$this->user || !$this->user->token || !$this->user->userId) {
@@ -213,12 +226,19 @@ class CEClient {
         curl_setopt($ch, CURLOPT_URL, $this->base_url . $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
         curl_setopt($ch, CURLOPT_HEADER, FALSE);
-        $isPost = FALSE;
+
         if($httpMethod == 'POST') {
-            $isPost = TRUE;
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
+            curl_setopt($ch, CURLOPT_POST, TRUE);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         }
-        curl_setopt($ch, CURLOPT_POST, $isPost);
+
+        $fileHandle = false;
+        if($httpMethod == 'PUT') {
+            curl_setopt($ch, CURLOPT_PUT, TRUE);
+            $fileHandle = fopen($payload, "rb");
+            curl_setopt($ch, CURLOPT_INFILE, $fileHandle);
+            curl_setopt($ch, CURLOPT_INFILESIZE, filesize($payload));
+        }
         
         $headers = array(
             "Authorization: $authorization",
@@ -242,12 +262,16 @@ class CEClient {
             $logfh = fopen("my_log.log", 'w+');
             curl_setopt($ch, CURLINFO_HEADER_OUT, true);
             error_log('postfield');
-            error_log(var_export($postFields,true));
+            error_log(var_export($payload,true));
         }
                 
         //curl_setopt($ch, CURLOPT_PROXY, '127.0.0.1:8888');
         
         $response = curl_exec($ch);
+        
+        if($fileHandle) {
+            fclose($fileHandle);
+        }
         
         if($debug_l2 && $this->debug) {
             //curl_setopt($ch, CURLINFO_HEADER_OUT, true);
