@@ -21,7 +21,7 @@ class CEClient {
     
     private $domain = 'api.crowdemotion.co.uk';
     private $port = '80';
-    private $append_url = '';
+    private $append_url = '/v1';
 
     private $base_url;
     
@@ -201,9 +201,8 @@ class CEClient {
 
         $filename = rawurlencode(basename($media_full_path));
         
-        $function = "facevideo/upload";
-        $url = "$function/$filename";   // ?filename=
-        $function = $url;
+        $function = "facevideo/upload/$filename";
+        $url = $function;
         
         $response = $this->makeCall($function, 'PUT', $url, $media_full_path);
                 
@@ -216,6 +215,8 @@ class CEClient {
         if(!$this->user || !$this->user->token || !$this->user->userId) {
             return false;
         }
+
+        $function = substr($this->append_url .'/'. $function, 1);
         
         $time = date('c');
         $nonce = substr(str_shuffle(MD5(microtime())), 0, 21);   // clever! http://derek.io/blog/2009/php-a-better-random-string-function/
