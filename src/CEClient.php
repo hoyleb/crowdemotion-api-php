@@ -20,7 +20,7 @@ if (!function_exists('curl_file_create')) {
 class CEClient {
     
     private $domain = 'api.crowdemotion.co.uk';
-    private $port = '80';
+    private $port = '';
     private $append_url = '/v1';
 
     private $base_url;
@@ -42,7 +42,7 @@ class CEClient {
                 $protocol = 'http';
             }
         }
-        $this->base_url = $protocol .'://'. $this->domain .':' . $this->port . $this->append_url .'/';        
+        $this->base_url = $protocol .'://'. $this->domain . ($this->port ? ':' . $this->port :'') . $this->append_url .'/';
     }
     
     public function login($username, $password) {
