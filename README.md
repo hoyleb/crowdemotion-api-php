@@ -1,4 +1,6 @@
 crowdemotion-api-php
 ====================
 
-This is CrowdEmotion REST API client for PHP.
+CrowdEmotion RESTful API client for PHP.
+
+This is intended as a very simple implementation example.
