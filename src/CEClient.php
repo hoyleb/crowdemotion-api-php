@@ -206,7 +206,11 @@ class CEClient {
         
         $response = $this->makeCall($function, 'PUT', $url, $media_full_path);
                 
-        return $response ? true : false;
+        if($response) {
+            $response = json_decode($response);
+        }
+
+        return $response;
     }
     
     private function makeCall($function, $httpMethod, $url, $payload=null, $opt=array()) {
